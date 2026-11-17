@@ -1,4 +1,3 @@
-
 .env
 .env.*
 !.env.example
@@ -15,6 +14,9 @@ coverage/
 playwright-report/
 test-results/
 *.log
+logs/
+run/
+data/
 *.zip
 *.7z
 *.tar

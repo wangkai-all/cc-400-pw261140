@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>身份裁决与贡献重建平台（虚构数据）</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <h1>多来源身份裁决 · 贡献重建 · 可追溯报表</h1>
+  <div class="badge">全部数据为程序生成的虚构身份，无真实个人识别功能</div>
+  <div id="global-status" class="status-line"></div>
+</header>
+
+<nav>
+  <button class="tab active" data-tab="evidence">① 候选证据</button>
+  <button class="tab" data-tab="entities">② 分析实体 / 合并 / 撤销拆分</button>
+  <button class="tab" data-tab="rebuild">③ 重建进程（可中断）</button>
+  <button class="tab" data-tab="ingest">④ 新事件注入</button>
+  <button class="tab" data-tab="stale">⑤ 旧裁决拦截（CAS）</button>
+  <button class="tab" data-tab="reports">⑥ 可追溯报表</button>
+</nav>
+
+<main>
+  <!-- 1 evidence -->
+  <section id="tab-evidence" class="panel active">
+    <div class="row">
+      <button onclick="loadEvidence()">刷新证据</button>
+      <label>状态过滤 <select id="ev-filter" onchange="loadEvidence()">
+        <option value="">全部</option><option value="open">open</option>
+        <option value="accepted">accepted</option>
+        <option value="rejected">rejected</option>
+      </select></label>
+    </div>
+    <table><thead><tr>
+      <th>证据ID</th><th>来源身份A</th><th>来源身份B</th><th>类型</th>
+      <th>分值</th><th>明细</th><th>状态</th><th>操作</th>
+    </tr></thead><tbody id="ev-body"></tbody></table>
+  </section>
+
+  <!-- 2 entities -->
+  <section id="tab-entities" class="panel">
+    <div class="row">
+      <button onclick="loadEntities()">刷新实体</button>
+      <span class="hint">当前裁决版本：<b id="adj-version">?</b></span>
+    </div>
+    <div id="impact-box" class="impact hidden"></div>
+    <div id="entity-grid"></div>
+    <div class="card">
+      <h3>合并选择（误合并演示：勾选 sid-0010 与 sid-0013 一类弱证据对）</h3>
+      <div id="merge-pickers" class="pickers"></div>
+      <div class="row">
+        <button onclick="previewImpact()">先看影响范围与成本</button>
+        <button class="primary" onclick="doMerge()">提交合并裁决</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>撤销误合并（拆分）：选择实体并为要拆出的来源身份建实体</h3>
+      <select id="split-entity"></select>
+      <div id="split-sids"></div>
+      <input id="split-note" placeholder="拆分说明，如：邮件矛盾，确认非同一人">
+      <button class="warn" onclick="doSplit()">执行拆分（自动标记旧指标失效并排队重建）</button>
+    </div>
+  </section>
+
+  <!-- 3 rebuild -->
+  <section id="tab-rebuild" class="panel">
+    <div class="row">
+      <button onclick="loadJobs()">刷新任务</button>
+      <label>轮询 <input type="checkbox" id="auto-jobs" onchange="toggleAuto()"></label>
+    </div>
+    <table><thead><tr><th>任务</th><th>模式</th><th>状态</th><th>影响范围</th>
+      <th>进度</th><th>游标</th><th>操作</th></tr></thead>
+      <tbody id="jobs-body"></tbody></table>
+    <div class="card note">
+      <b>中断语义：</b>任务按小批次提交游标，中断后可从游标恢复；批次查询只依赖游标，
+      重建期间到达的新事件会在下一批被自动纳入（水位线），无需重启、不漏事件。
+    </div>
+  </section>
+
+  <!-- 4 ingest -->
+  <section id="tab-ingest" class="panel">
+    <div class="card">
+      <h3>在重建进行中注入虚构新事件</h3>
+      <label>类型 <select id="in-type">
+        <option>login</option><option>purchase</option>
+        <option>refund</option><option>ticket</option><option>payout</option>
+      </select></label>
+      <label>金额 <input id="in-amount" type="number" step="0.01" placeholder="可空"></label>
+      <button class="primary" onclick="doIngest()">注入事件</button>
+      <div id="ingest-result" class="hint"></div>
+    </div>
+  </section>
+
+  <!-- 5 stale -->
+  <section id="tab-stale" class="panel">
+    <div class="card">
+      <h3>模拟晚到的旧裁决</h3>
+      <p class="hint">某异步工作进程基于旧版本算好的合并延迟上报。CAS 层比对 base_version，
+        旧结论一律拒绝并写入审计表，绝不覆盖新结论。</p>
+      <div id="late-pickers" class="pickers"></div>
+      <label>落后版本数 <input id="late-delay" type="number" value="1" min="1" style="width:5rem"></label>
+      <button class="warn" onclick="doLate()">发送晚到裁决</button>
+    </div>
+    <h3>被拦截的旧裁决审计</h3>
+    <table><thead><tr><th>#</th><th>尝试版本</th><th>当前版本</th><th>原因</th><th>时间</th>
+      </tr></thead><tbody id="stale-body"></tbody></table>
+  </section>
+
+  <!-- 6 reports -->
+  <section id="tab-reports" class="panel">
+    <div class="row">
+      <button class="primary" onclick="buildReport()">生成实体报表</button>
+      <button onclick="loadReports()">历史报表</button>
+      <button onclick="loadFreshness()">刷新新鲜度</button>
+    </div>
+    <div id="freshness" class="card"></div>
+    <div id="report-body"></div>
+    <div class="card">
+      <h3>事件级溯源钻取</h3>
+      <input id="trace-id" placeholder="如 ev-000001">
+      <button onclick="doTrace()">追溯</button>
+      <pre id="trace-out"></pre>
+    </div>
+  </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
